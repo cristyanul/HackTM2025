@@ -51,6 +51,25 @@
     const tbody  = document.getElementById("tbody");
     const loadBtn= document.getElementById("loadMore");
     const noneMsg= document.getElementById("noneMsg");
+    const categoryFilter = document.getElementById("categoryFilter");
+    let currentCategory = '';
+
+    // Load categories for filter dropdown
+    function loadCategories() {
+      fetch('/api/categories')
+        .then(r => r.json())
+        .then(categories => {
+          categories.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat;
+            option.textContent = cat;
+            categoryFilter.appendChild(option);
+          });
+        })
+        .catch(err => {
+          console.error('Failed to load categories:', err);
+        });
+    }
 
     function addRows(rows){
       rows.forEach(p=>{
@@ -69,7 +88,8 @@
     }
 
     function load(){
-      fetch(`/admin/api/resources?offset=${offset}&limit=${limit}`)
+      const categoryParam = currentCategory ? `&category=${encodeURIComponent(currentCategory)}` : '';
+      fetch(`/admin/api/resources?offset=${offset}&limit=${limit}${categoryParam}`)
         .then(r=>r.json())
         .then(data=>{
           addRows(data);
@@ -85,7 +105,23 @@
         });
     }
 
-    // initial batch + button handler
+    function resetAndLoad() {
+      // Clear existing rows
+      tbody.innerHTML = '';
+      offset = 0;
+      loadBtn.disabled = false;
+      noneMsg.classList.add("hidden");
+      load();
+    }
+
+    // Category filter change handler
+    categoryFilter.addEventListener('change', (e) => {
+      currentCategory = e.target.value;
+      resetAndLoad();
+    });
+
+    // initial setup
+    loadCategories();
     load();
     loadBtn.addEventListener("click", load);
   </script>
