@@ -7,6 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
     .addTo(map);
 
   const markers = new Map();   // id → Leaflet marker
+  let currentCategory = '';   // current filter
 
   // ── Modal elements ───────────────────────────────────────
   const modal       = document.getElementById("placeModal");
@@ -16,15 +17,33 @@ document.addEventListener("DOMContentLoaded", () => {
   const typeField   = document.getElementById("type");
   const categoryField = document.getElementById("category");
   const cityField   = document.getElementById("city");
+  const capacityField = document.getElementById("capacity");
+  const descriptionField = document.getElementById("description");
+  const contactField = document.getElementById("contact");
   const urlField    = document.getElementById("url");
   const deleteBtn   = document.getElementById("deleteBtn");
   const cancelBtn   = document.getElementById("cancelBtn");
+  const categoryFilter = document.getElementById("categoryFilter");
 
   let currentLat, currentLon;
 
   // ── Helpers ──────────────────────────────────────────────
+  function loadCategories() {
+    fetch("/api/categories")
+      .then(r => r.json())
+      .then(categories => {
+        categories.forEach(cat => {
+          const option = document.createElement('option');
+          option.value = cat;
+          option.textContent = cat;
+          categoryFilter.appendChild(option);
+        });
+      });
+  }
+
   function loadMarkers() {
-    fetch("/admin/api/places")
+    const url = currentCategory ? `/admin/api/resources?category=${encodeURIComponent(currentCategory)}` : "/admin/api/resources";
+    fetch(url)
       .then(r => r.json())
       .then(data => {
         // clear existing
@@ -46,13 +65,17 @@ document.addEventListener("DOMContentLoaded", () => {
       typeField.value    = place.type;
       categoryField.value = place.category || "";
       cityField.value    = place.city || "";
+      capacityField.value = place.capacity || "";
+      descriptionField.value = place.description || "";
+      contactField.value = place.contact || "";
       urlField.value     = place.url || "";
       currentLat         = place.lat;
       currentLon         = place.lon;
       deleteBtn.classList.remove("hidden");
     } else {                     // creating
       idField.value = "";
-      nameField.value = typeField.value = categoryField.value = cityField.value = urlField.value = "";
+      nameField.value = typeField.value = categoryField.value = cityField.value = "";
+      capacityField.value = descriptionField.value = contactField.value = urlField.value = "";
       deleteBtn.classList.add("hidden");
     }
     modal.showModal();
@@ -69,17 +92,20 @@ document.addEventListener("DOMContentLoaded", () => {
   form.addEventListener("submit", e => {
     e.preventDefault();
     const payload = {
-      name:     nameField.value,
-      type:     typeField.value,
-      category: categoryField.value,
-      city:     cityField.value,
-      url:      urlField.value,
-      lat:      currentLat,
-      lon:      currentLon
+      name:        nameField.value,
+      type:        typeField.value,
+      category:    categoryField.value,
+      city:        cityField.value,
+      capacity:    capacityField.value ? parseInt(capacityField.value) : null,
+      description: descriptionField.value,
+      contact:     contactField.value,
+      url:         urlField.value,
+      lat:         currentLat,
+      lon:         currentLon
     };
     const id     = idField.value;
     const method = id ? "PUT" : "POST";
-    const url    = id ? `/admin/api/places/${id}` : "/admin/api/places";
+    const url    = id ? `/admin/api/resources/${id}` : "/admin/api/resources";
 
     fetch(url, {
       method,
@@ -100,14 +126,21 @@ document.addEventListener("DOMContentLoaded", () => {
   // ── Delete ───────────────────────────────────────────────
   deleteBtn.addEventListener("click", () => {
     const id = idField.value;
-    if (confirm("Delete this place?")) {
-      fetch(`/admin/api/places/${id}`, { method: "DELETE" })
+    if (confirm("Delete this resource?")) {
+      fetch(`/admin/api/resources/${id}`, { method: "DELETE" })
         .then(() => { modal.close(); loadMarkers(); });
     }
   });
 
   cancelBtn.addEventListener("click", () => modal.close());
 
+  // ── Category filter ──────────────────────────────────────
+  categoryFilter.addEventListener("change", (e) => {
+    currentCategory = e.target.value;
+    loadMarkers();
+  });
+
   // initial load
+  loadCategories();
   loadMarkers();
 });

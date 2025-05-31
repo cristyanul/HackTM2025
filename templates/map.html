@@ -20,8 +20,17 @@
 </head>
 <body class="h-screen flex flex-col">
 
-  <header class="p-4 bg-gray-800 text-white text-xl">
-    Public Resources Map
+  <header class="p-4 bg-gray-800 text-white">
+    <div class="flex justify-between items-center">
+      <h1 class="text-xl">Public Resources Map</h1>
+      <div class="flex items-center space-x-4">
+        <label class="text-sm">Filter by category:</label>
+        <select id="categoryFilter" class="text-black px-2 py-1 rounded">
+          <option value="">All categories</option>
+        </select>
+        <a href="/chat" class="underline text-white">🤖 AI Assistant</a>
+      </div>
+    </div>
   </header>
 
   <!-- flex-1 makes the map fill all remaining space -->
@@ -32,12 +41,45 @@
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
       { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
 
-    fetch('/api/resources')
+    const categoryFilter = document.getElementById('categoryFilter');
+    let allMarkers = [];
+
+    // Load categories for filter dropdown
+    fetch('/api/categories')
       .then(r => r.json())
-      .then(data => data.forEach(d => {
-        L.marker([d.lat, d.lon]).addTo(map)
-         .bindPopup(`<b>${d.name}</b><br>${d.type}<br>Category: ${d.category || 'N/A'}<br>City: ${d.city || 'N/A'}<br>${d.url ? `<a href="${d.url}" target="_blank">Website</a>` : ''}`);
-      }));
+      .then(categories => {
+        categories.forEach(cat => {
+          const option = document.createElement('option');
+          option.value = cat;
+          option.textContent = cat;
+          categoryFilter.appendChild(option);
+        });
+      });
+
+    function loadMarkers(category = '') {
+      // Clear existing markers
+      allMarkers.forEach(marker => map.removeLayer(marker));
+      allMarkers = [];
+
+      const url = category ? `/api/resources?category=${encodeURIComponent(category)}` : '/api/resources';
+      fetch(url)
+        .then(r => r.json())
+        .then(data => {
+          data.forEach(d => {
+            const marker = L.marker([d.lat, d.lon]).addTo(map)
+              .bindPopup(`<b>${d.name}</b><br>${d.type}<br>Category: ${d.category || 'N/A'}<br>City: ${d.city || 'N/A'}<br>${d.url ? `<a href="${d.url}" target="_blank">Website</a>` : ''}`);
+            allMarkers.push(marker);
+          });
+        });
+    }
+
+    // Filter change handler
+    categoryFilter.addEventListener('change', (e) => {
+      loadMarkers(e.target.value);
+    });
+
+    // Initial load
+    loadMarkers();
   </script>
 </body>
 </html>
