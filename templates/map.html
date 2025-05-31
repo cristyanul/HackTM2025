@@ -1,0 +1,43 @@
+<!-- public_resources_map/templates/map.html -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Public Resources Map</title>
+
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9/dist/leaflet.js"></script>
+
+  <style>
+    /* Ensure Leaflet container fills flex item */
+    #map .leaflet-container { width:100%; height:100%; }
+  </style>
+</head>
+<body class="h-screen flex flex-col">
+
+  <header class="p-4 bg-gray-800 text-white text-xl">
+    Public Resources Map
+  </header>
+
+  <!-- flex-1 makes the map fill all remaining space -->
+  <div id="map" class="flex-1"></div>
+
+  <script>
+    const map = L.map('map').setView([45.75, 21.23], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+
+    fetch('/api/resources')
+      .then(r => r.json())
+      .then(data => data.forEach(d => {
+        L.marker([d.lat, d.lon]).addTo(map)
+         .bindPopup(`<b>${d.name}</b><br>${d.type} • ${d.capacity} seats`);
+      }));
+  </script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!-- public_resources_map/templates/admin_map.html -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Admin • Map editor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9/dist/leaflet.js"></script>
+
+  <style>
+    #map .leaflet-container { width:100%; height:100%; }
+  </style>
+</head>
+<body class="h-screen flex flex-col">
+
+<header class="p-4 bg-gray-800 text-white flex justify-between">
+  <span class="text-xl text-white">Admin · Resource Map</span>
+  <a class="underline text-white" href="/admin/list">List view</a>
+</header>
+
+<div id="map" class="flex-1"></div>
+
+<!-- Modal -->
+<dialog id="placeModal" class="p-4 rounded-lg w-96 shadow-lg">
+  <form id="placeForm" class="space-y-4">
+    <input type="hidden" id="placeId">
+    <div>
+      <label class="block text-sm font-medium">Name</label>
+      <input id="name" class="w-full border p-1 rounded" required>
+    </div>
+    <div>
+      <label class="block text-sm font-medium">Type</label>
+      <input id="type" class="w-full border p-1 rounded" required>
+    </div>
+    <div>
+      <label class="block text-sm font-medium">Capacity</label>
+      <input id="capacity" type="number" min="0"
+             class="w-full border p-1 rounded">
+    </div>
+    <div class="flex justify-end space-x-3">
+      <button type="button" id="deleteBtn"
+              class="hidden bg-red-600 text-white px-3 py-1 rounded">
+        Delete
+      </button>
+      <button type="submit"
+              class="bg-blue-600 text-white px-3 py-1 rounded">
+        Save
+      </button>
+      <button type="button" id="cancelBtn"
+              class="border px-3 py-1 rounded">
+        Cancel
+      </button>
+    </div>
+  </form>
+</dialog>
+
+<script src="/static/admin.js"></script>
+</body>
+</html>

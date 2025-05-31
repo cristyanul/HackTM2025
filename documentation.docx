@@ -1,0 +1,97 @@
+1 Overview
+A single-process Flask 3 application that exposes:
+
+URL	Purpose	Access
+/	Public read-only map for citizens	Anonymous
+/api/resources	JSON feed powering the public map	Anonymous
+/login, /logout	Session-based auth (Flask-Login)	Anonymous
+/admin/	Admin map with click-to-add / edit	Authenticated
+/admin/list	Paginated tabular list (20 rows / call)	Authenticated
+/admin/api/places
+/admin/api/places/<id>	CRUD JSON endpoints	Authenticated
+The SQLite file (resources.db) is the sole source of truth.
+All write paths go through the authenticated JSON API, triggered by the admin UI.
+
+
+TECH STACK
+| Layer                       | Choice                                                | Rationale                           |
+| --------------------------- | ----------------------------------------------------- | ----------------------------------- |
+| Web framework               | **Flask 3.x**                                         | Microcore; easy to read in one file |
+| Templating                  | **Jinja2** (bundled)                                  | Logic-less HTML, no build step      |
+| ORM / DB                    | **Flask-SQLAlchemy 3 → SQLite**                       | Single file, ACID, zero admin       |
+| Auth                        | **Flask-Login** + salted hashes (`werkzeug.security`) | Session cookies, no external IdP    |
+| Front-end map               | **Leaflet 1.9** via CDN                               | Lightweight, no React               |
+| Styling                     | **Tailwind** via CDN                                  | Zero tooling, modern UI             |
+| JS sprinkles                | Vanilla ES6 in `static/admin.js`                      | No bundler                          |
+| Containerisation (optional) | Single Dockerfile / `fly launch`                      | Deploy anywhere                     |
+
+
+
+Runtime Flow
+4.1 Application bootstrap
+
+run.sh
+creates venv, installs deps
+(optional) calls create_user.py once to seed the first admin
+sets FLASK_APP & runs flask run (Werkzeug dev server).
+app.py imports are resolved; db.create_all() auto-creates two tables in resources.db if absent:
+
+
+CREATE TABLE user (
+    id INTEGER PRIMARY KEY,
+    username TEXT UNIQUE NOT NULL,
+    pw_hash TEXT NOT NULL
+);
+CREATE TABLE resources (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    lat REAL NOT NULL,
+    lon REAL NOT NULL,
+    type TEXT NOT NULL,
+    capacity INTEGER DEFAULT 0
+);
+
+
+
+4.2 Authentication sequence
+
+
+
+sequenceDiagram
+    actor A as Admin
+    participant B as /login
+    participant C as Flask-Login
+    A->>B: POST username/password
+    B->>C: check_password_hash()
+    C-->>B: user object
+    B-->>A: 302 → /admin/
+    Note right of A: browser stores<br>session cookie “session=…”
+
+
+4.3 Admin map CRUD
+
+On page load admin.js → GET /admin/api/places (no offset/limit)
+JS drops Leaflet markers and attaches a click-handler:
+Map click → open empty modal → POST → /admin/api/places
+Marker click → fetch /admin/api/places/<id> → populate modal →
+Save = PUT
+Delete = DELETE
+After each mutation the JS refetches all places and rebuilds markers (simple, stateless).
+
+
+4.4 Admin list paging
+
+admin_list.html JS maintains offset and requests exactly 20 rows a time:
+
+GET /admin/api/places?offset=40&limit=20
+
+If the response length < limit, the “Load more” button disables, we might change it to dissappear
+
+5 Security Notes
+Secret key — default change-me; override via env SECRET_KEY in production (important)
+Password hashing — PBKDF2-SHA256 (werkzeug.generate_password_hash default). (overkill for current quantum computers)
+To rotate or upgrade algorithm simply recreate users.
+CSRF — only JSON APIs mutate; they require XHR with cookie in same origin.
+For higher assurance add Flask-WTF and enable CSRF tokens.
+Brute-force protection — none built-in; could do a rate-limiter (e.g. Nginx limit_req) or use flask-limiter.
+
