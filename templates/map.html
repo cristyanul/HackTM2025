@@ -36,7 +36,7 @@
       .then(r => r.json())
       .then(data => data.forEach(d => {
         L.marker([d.lat, d.lon]).addTo(map)
-         .bindPopup(`<b>${d.name}</b><br>${d.type} • ${d.capacity} seats`);
+         .bindPopup(`<b>${d.name}</b><br>${d.type}<br>Category: ${d.category || 'N/A'}<br>City: ${d.city || 'N/A'}<br>${d.url ? `<a href="${d.url}" target="_blank">Website</a>` : ''}`);
       }));
   </script>
 </body>

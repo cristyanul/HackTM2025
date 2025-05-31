@@ -1,34 +1,37 @@
 # public_resources_map/import_csv.py
 """
-One-time bulk loader.
-Duplicate lines (same name + coords) are ignored.
+Bulk-import for timis_public_resources.csv
+Usage:
+    python import_csv.py path/to/timis_public_resources.csv
+If path is omitted, defaults to ./timis_public_resources.csv
+Duplicates (same name + lat + lon) are skipped.
 """
-import csv
-from pathlib import Path
-
+import csv, sys, pathlib
 from app import app, db, Place
 
-CSV_FILE = Path(__file__).with_name("resources.csv")
+csv_path = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "timis_public_resources.csv")
+if not csv_path.exists():
+    print(f"CSV not found: {csv_path}")
+    sys.exit(1)
 
-def import_csv():
-    with app.app_context():
-        with open(CSV_FILE, newline="", encoding="utf-8") as fh:
-            for row in csv.DictReader(fh):
-                exists = Place.query.filter_by(
-                    name=row["name"],
-                    lat=float(row["lat"]),
-                    lon=float(row["lon"])
-                ).first()
-                if not exists:
-                    db.session.add(Place(
-                        name=row["name"],
-                        lat=float(row["lat"]),
-                        lon=float(row["lon"]),
-                        type=row["type"],
-                        capacity=int(row["capacity"] or 0)
-                    ))
+with app.app_context():
+    added = skipped = 0
+    with csv_path.open(newline="", encoding="utf-8") as fh:
+        for row in csv.DictReader(fh):
+            name, lat, lon = row["Name"], float(row["Lat"]), float(row["Lon"])
+            exists = Place.query.filter_by(name=name, lat=lat, lon=lon).first()
+            if exists:
+                skipped += 1
+                continue
+            place = Place(
+                name=name,
+                type=row["Category"],
+                lat=lat, lon=lon,
+                city=row.get("City") or None,
+                url=row.get("URL") or None,
+                category=row.get("Category") or None
+            )
+            db.session.add(place)
+            added += 1
         db.session.commit()
-        print("CSV import finished.")
-
-if __name__ == "__main__":
-    import_csv()
+    print(f"Imported: {added}  |  Skipped duplicates: {skipped}")

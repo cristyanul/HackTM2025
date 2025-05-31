@@ -9,14 +9,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const markers = new Map();   // id → Leaflet marker
 
   // ── Modal elements ───────────────────────────────────────
-  const modal      = document.getElementById("placeModal");
-  const form       = document.getElementById("placeForm");
-  const idField    = document.getElementById("placeId");
-  const nameField  = document.getElementById("name");
-  const typeField  = document.getElementById("type");
-  const capField   = document.getElementById("capacity");
-  const deleteBtn  = document.getElementById("deleteBtn");
-  const cancelBtn  = document.getElementById("cancelBtn");
+  const modal       = document.getElementById("placeModal");
+  const form        = document.getElementById("placeForm");
+  const idField     = document.getElementById("placeId");
+  const nameField   = document.getElementById("name");
+  const typeField   = document.getElementById("type");
+  const categoryField = document.getElementById("category");
+  const cityField   = document.getElementById("city");
+  const urlField    = document.getElementById("url");
+  const deleteBtn   = document.getElementById("deleteBtn");
+  const cancelBtn   = document.getElementById("cancelBtn");
 
   let currentLat, currentLon;
 
@@ -42,13 +44,15 @@ document.addEventListener("DOMContentLoaded", () => {
       idField.value      = place.id;
       nameField.value    = place.name;
       typeField.value    = place.type;
-      capField.value     = place.capacity;
+      categoryField.value = place.category || "";
+      cityField.value    = place.city || "";
+      urlField.value     = place.url || "";
       currentLat         = place.lat;
       currentLon         = place.lon;
       deleteBtn.classList.remove("hidden");
     } else {                     // creating
       idField.value = "";
-      nameField.value = typeField.value = capField.value = "";
+      nameField.value = typeField.value = categoryField.value = cityField.value = urlField.value = "";
       deleteBtn.classList.add("hidden");
     }
     modal.showModal();
@@ -67,7 +71,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const payload = {
       name:     nameField.value,
       type:     typeField.value,
-      capacity: Number(capField.value) || 0,
+      category: categoryField.value,
+      city:     cityField.value,
+      url:      urlField.value,
       lat:      currentLat,
       lon:      currentLon
     };
