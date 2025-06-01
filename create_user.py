@@ -1,4 +1,3 @@
-# public_resources_map/create_user.py
 """
 python create_user.py alice supersecret
 """

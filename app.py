@@ -1,4 +1,3 @@
-# public_resources_map/app.py
 """
 Flask app with:
 • SQLite + SQLAlchemy
@@ -65,10 +64,10 @@ class Resource(db.Model):
     lat         = db.Column(db.Float)
     lon         = db.Column(db.Float)
     capacity    = db.Column(db.Integer)
-    description = db.Column(db.Text)      # short pitch
+    description = db.Column(db.Text)
     url         = db.Column(db.String)
-    contact     = db.Column(db.String)    # e-mail / phone
-    category    = db.Column(db.String)    # Legacy field for compatibility
+    contact     = db.Column(db.String)
+    category    = db.Column(db.String)
 
     def to_dict(self):
         return dict(

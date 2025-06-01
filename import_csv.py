@@ -1,4 +1,3 @@
-# public_resources_map/import_csv.py
 """
 Bulk-import for timis_public_resources.csv
 Usage:
