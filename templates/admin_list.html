@@ -10,9 +10,12 @@
   <header class="mb-6 flex justify-between items-center">
     <h1 class="text-2xl font-semibold">All Resources</h1>
     <div class="flex items-center space-x-4">
-      <label class="text-sm">Filter by category:</label>
-      <select id="categoryFilter" class="border px-2 py-1 rounded">
-        <option value="">All categories</option>
+      <button id="createBtn" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+        Create New Resource
+      </button>
+      <label class="text-sm">Filter by type:</label>
+      <select id="typeFilter" class="border px-2 py-1 rounded">
+        <option value="">All types</option>
       </select>
       <a href="/admin/" class="underline">Back to map</a>
       <a href="/chat" class="underline">AI Chat</a>
@@ -30,6 +33,7 @@
         <th class="border px-2 py-1">Capacity</th>
         <th class="border px-2 py-1">Contact</th>
         <th class="border px-2 py-1">URL</th>
+        <th class="border px-2 py-1">Actions</th>
       </tr>
     </thead>
     <tbody id="tbody"></tbody>
@@ -45,29 +49,111 @@
     </span>
   </div>
 
+  <!-- Modal for Create/Edit -->
+  <dialog id="resourceModal" class="p-6 rounded-lg w-96 shadow-lg backdrop:bg-gray-900 backdrop:bg-opacity-50">
+    <form id="resourceForm" class="space-y-4">
+      <h2 id="modalTitle" class="text-xl font-semibold mb-4">Create New Resource</h2>
+      <input type="hidden" id="resourceId">
+
+      <div>
+        <label class="block text-sm font-medium">Name *</label>
+        <input id="name" class="w-full border p-2 rounded" required>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium">Type *</label>
+        <select id="type" class="w-full border p-2 rounded" required>
+          <option value="">Select type...</option>
+          <option value="Space">Space (venues, halls, rooms)</option>
+          <option value="Volunteer">Volunteer (NGOs, volunteers)</option>
+          <option value="Partner">Partner (companies, institutions)</option>
+          <option value="Logistics">Logistics (catering, equipment)</option>
+          <option value="Grant">Grant (funding, financial support)</option>
+          <option value="Event">Event (existing events, networking)</option>
+          <option value="Participatory Program">Participatory Program (community programs)</option>
+          <option value="Project">Project (infrastructure, development)</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium">Category</label>
+        <input id="category" class="w-full border p-2 rounded" placeholder="e.g., Conference Hall, Tech NGO">
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium">City</label>
+        <input id="city" class="w-full border p-2 rounded" placeholder="e.g., Timișoara">
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium">Latitude</label>
+          <input id="lat" type="number" step="any" class="w-full border p-2 rounded" placeholder="45.7489 (optional)">
+        </div>
+        <div>
+          <label class="block text-sm font-medium">Longitude</label>
+          <input id="lon" type="number" step="any" class="w-full border p-2 rounded" placeholder="21.2087 (optional)">
+        </div>
+      </div>
+      <p class="text-xs text-gray-600">Note: Latitude and longitude are optional. Resources without coordinates won't appear on the map but can still be found through search.</p>
+
+      <div>
+        <label class="block text-sm font-medium">Capacity</label>
+        <input id="capacity" type="number" class="w-full border p-2 rounded" placeholder="Number of people (for spaces)">
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium">Description</label>
+        <textarea id="description" class="w-full border p-2 rounded h-20" placeholder="Brief description of the resource"></textarea>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium">Contact</label>
+        <input id="contact" class="w-full border p-2 rounded" placeholder="Email or phone">
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium">URL</label>
+        <input id="url" type="url" class="w-full border p-2 rounded" placeholder="Website or social media">
+      </div>
+
+      <div class="flex justify-end space-x-3 pt-4">
+        <button type="button" id="deleteBtn" class="hidden bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+          Delete
+        </button>
+        <button type="button" id="cancelBtn" class="border px-4 py-2 rounded hover:bg-gray-50">
+          Cancel
+        </button>
+        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+          Save
+        </button>
+      </div>
+    </form>
+  </dialog>
+
   <script>
     let offset = 0;
     const limit  = 20;
     const tbody  = document.getElementById("tbody");
     const loadBtn= document.getElementById("loadMore");
     const noneMsg= document.getElementById("noneMsg");
-    const categoryFilter = document.getElementById("categoryFilter");
-    let currentCategory = '';
+    const typeFilter = document.getElementById("typeFilter");
+    let currentType = '';
 
-    // Load categories for filter dropdown
-    function loadCategories() {
-      fetch('/api/categories')
+    // Load types for filter dropdown
+    function loadTypes() {
+      fetch('/api/resource-types')
         .then(r => r.json())
-        .then(categories => {
-          categories.forEach(cat => {
+        .then(types => {
+          types.forEach(type => {
             const option = document.createElement('option');
-            option.value = cat;
-            option.textContent = cat;
-            categoryFilter.appendChild(option);
+            option.value = type;
+            option.textContent = type;
+            typeFilter.appendChild(option);
           });
         })
         .catch(err => {
-          console.error('Failed to load categories:', err);
+          console.error('Failed to load types:', err);
         });
     }
 
@@ -82,14 +168,18 @@
           <td class="border px-2 py-1">${p.city || 'N/A'}</td>
           <td class="border px-2 py-1">${p.capacity || 'N/A'}</td>
           <td class="border px-2 py-1">${p.contact || 'N/A'}</td>
-          <td class="border px-2 py-1">${p.url ? `<a href="${p.url}" target="_blank" class="text-blue-600 underline">Link</a>` : 'N/A'}</td>`;
+          <td class="border px-2 py-1">${p.url ? `<a href="${p.url}" target="_blank" class="text-blue-600 underline">Link</a>` : 'N/A'}</td>
+          <td class="border px-2 py-1">
+            <button onclick="editResource(${p.id})" class="text-blue-600 hover:text-blue-800 mr-2">Edit</button>
+            <button onclick="deleteResource(${p.id})" class="text-red-600 hover:text-red-800">Delete</button>
+          </td>`;
         tbody.appendChild(tr);
       });
     }
 
     function load(){
-      const categoryParam = currentCategory ? `&category=${encodeURIComponent(currentCategory)}` : '';
-      fetch(`/admin/api/resources?offset=${offset}&limit=${limit}${categoryParam}`)
+      const typeParam = currentType ? `&type=${encodeURIComponent(currentType)}` : '';
+      fetch(`/admin/api/resources?offset=${offset}&limit=${limit}${typeParam}`)
         .then(r=>r.json())
         .then(data=>{
           addRows(data);
@@ -114,16 +204,179 @@
       load();
     }
 
-    // Category filter change handler
-    categoryFilter.addEventListener('change', (e) => {
-      currentCategory = e.target.value;
+    // Type filter change handler
+    typeFilter.addEventListener('change', (e) => {
+      currentType = e.target.value;
       resetAndLoad();
     });
 
     // initial setup
-    loadCategories();
+    loadTypes();
     load();
     loadBtn.addEventListener("click", load);
+
+    // Modal and form elements
+    const modal = document.getElementById("resourceModal");
+    const form = document.getElementById("resourceForm");
+    const modalTitle = document.getElementById("modalTitle");
+    const createBtn = document.getElementById("createBtn");
+    const cancelBtn = document.getElementById("cancelBtn");
+    const deleteBtn = document.getElementById("deleteBtn");
+
+    // Form fields
+    const resourceId = document.getElementById("resourceId");
+    const nameField = document.getElementById("name");
+    const typeField = document.getElementById("type");
+    const categoryField = document.getElementById("category");
+    const cityField = document.getElementById("city");
+    const latField = document.getElementById("lat");
+    const lonField = document.getElementById("lon");
+    const capacityField = document.getElementById("capacity");
+    const descriptionField = document.getElementById("description");
+    const contactField = document.getElementById("contact");
+    const urlField = document.getElementById("url");
+
+    // Open modal for creating new resource
+    createBtn.addEventListener("click", () => {
+      openModal();
+    });
+
+    // Open modal for editing or creating
+    function openModal(resource = null) {
+      if (resource) {
+        // Edit mode
+        modalTitle.textContent = "Edit Resource";
+        resourceId.value = resource.id;
+        nameField.value = resource.name || "";
+        typeField.value = resource.type || "";
+        categoryField.value = resource.category || "";
+        cityField.value = resource.city || "";
+        latField.value = resource.lat || "";
+        lonField.value = resource.lon || "";
+        capacityField.value = resource.capacity || "";
+        descriptionField.value = resource.description || "";
+        contactField.value = resource.contact || "";
+        urlField.value = resource.url || "";
+        deleteBtn.classList.remove("hidden");
+      } else {
+        // Create mode
+        modalTitle.textContent = "Create New Resource";
+        resourceId.value = "";
+        nameField.value = "";
+        typeField.value = "";
+        categoryField.value = "";
+        cityField.value = "";
+        latField.value = "";
+        lonField.value = "";
+        capacityField.value = "";
+        descriptionField.value = "";
+        contactField.value = "";
+        urlField.value = "";
+        deleteBtn.classList.add("hidden");
+      }
+      modal.showModal();
+    }
+
+    // Close modal
+    cancelBtn.addEventListener("click", () => {
+      modal.close();
+    });
+
+    // Form submission
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const payload = {
+        name: nameField.value,
+        type: typeField.value,
+        category: categoryField.value,
+        city: cityField.value,
+        lat: latField.value ? parseFloat(latField.value) : null,
+        lon: lonField.value ? parseFloat(lonField.value) : null,
+        capacity: capacityField.value ? parseInt(capacityField.value) : null,
+        description: descriptionField.value,
+        contact: contactField.value,
+        url: urlField.value
+      };
+
+      const id = resourceId.value;
+      const method = id ? "PUT" : "POST";
+      const url = id ? `/admin/api/resources/${id}` : "/admin/api/resources";
+
+      try {
+        const response = await fetch(url, {
+          method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          throw new Error("Save failed");
+        }
+
+        modal.close();
+        resetAndLoad(); // Reload the data
+      } catch (error) {
+        alert("Error saving resource: " + error.message);
+      }
+    });
+
+    // Delete resource
+    deleteBtn.addEventListener("click", async () => {
+      if (!confirm("Are you sure you want to delete this resource?")) {
+        return;
+      }
+
+      const id = resourceId.value;
+      try {
+        const response = await fetch(`/admin/api/resources/${id}`, {
+          method: "DELETE"
+        });
+
+        if (!response.ok) {
+          throw new Error("Delete failed");
+        }
+
+        modal.close();
+        resetAndLoad(); // Reload the data
+      } catch (error) {
+        alert("Error deleting resource: " + error.message);
+      }
+    });
+
+    // Global functions for inline actions
+    window.editResource = async function(id) {
+      try {
+        const response = await fetch(`/admin/api/resources/${id}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch resource");
+        }
+        const resource = await response.json();
+        openModal(resource);
+      } catch (error) {
+        alert("Error loading resource: " + error.message);
+      }
+    };
+
+    window.deleteResource = async function(id) {
+      if (!confirm("Are you sure you want to delete this resource?")) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/admin/api/resources/${id}`, {
+          method: "DELETE"
+        });
+
+        if (!response.ok) {
+          throw new Error("Delete failed");
+        }
+
+        resetAndLoad(); // Reload the data
+      } catch (error) {
+        alert("Error deleting resource: " + error.message);
+      }
+    };
   </script>
 </body>
 </html>

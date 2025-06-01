@@ -24,9 +24,9 @@
     <div class="flex justify-between items-center">
       <h1 class="text-xl">Public Resources Map</h1>
       <div class="flex items-center space-x-4">
-        <label class="text-sm">Filter by category:</label>
-        <select id="categoryFilter" class="text-black px-2 py-1 rounded">
-          <option value="">All categories</option>
+        <label class="text-sm">Filter by type:</label>
+        <select id="typeFilter" class="text-black px-2 py-1 rounded">
+          <option value="">All types</option>
         </select>
         <a href="/chat" class="underline text-white">🤖 AI Assistant</a>
       </div>
@@ -41,27 +41,27 @@
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
       { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
 
-    const categoryFilter = document.getElementById('categoryFilter');
+    const typeFilter = document.getElementById('typeFilter');
     let allMarkers = [];
 
-    // Load categories for filter dropdown
-    fetch('/api/categories')
+    // Load types for filter dropdown
+    fetch('/api/resource-types')
       .then(r => r.json())
-      .then(categories => {
-        categories.forEach(cat => {
+      .then(types => {
+        types.forEach(type => {
           const option = document.createElement('option');
-          option.value = cat;
-          option.textContent = cat;
-          categoryFilter.appendChild(option);
+          option.value = type;
+          option.textContent = type;
+          typeFilter.appendChild(option);
         });
       });
 
-    function loadMarkers(category = '') {
+    function loadMarkers(type = '') {
       // Clear existing markers
       allMarkers.forEach(marker => map.removeLayer(marker));
       allMarkers = [];
 
-      const url = category ? `/api/resources?category=${encodeURIComponent(category)}` : '/api/resources';
+      const url = type ? `/api/resources?type=${encodeURIComponent(type)}` : '/api/resources';
       fetch(url)
         .then(r => r.json())
         .then(data => {
@@ -74,7 +74,7 @@
     }
 
     // Filter change handler
-    categoryFilter.addEventListener('change', (e) => {
+    typeFilter.addEventListener('change', (e) => {
       loadMarkers(e.target.value);
     });
 

@@ -1,265 +1,438 @@
-<!-- public_resources_map/templates/chat.html -->
-<!doctype html>
-<html lang="en">
+ <!doctype html>
+<html lang="en" class="bg-gray-900 text-white">
 <head>
-  <meta charset="utf-8">
-  <title>AI Assistant • Event Planning Helper</title>
+  <meta charset="utf-8" />
+  <title>Public Resources Map & AI Assistant</title>
+
+  <!-- Tailwind (CDN) -->
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Leaflet -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9/dist/leaflet.css"
+  />
+  <script src="https://unpkg.com/leaflet@1.9/dist/leaflet.js"></script>
+
   <style>
-    .chat-bubble-user {
-      @apply bg-blue-500 text-white rounded-lg p-3 max-w-sm ml-auto;
-    }
-    .chat-bubble-ai {
-      @apply bg-gray-200 text-gray-800 rounded-lg p-3 max-w-lg mr-auto;
-    }
-    .typing-indicator {
-      @apply flex space-x-1;
-    }
-    .typing-dot {
-      @apply w-2 h-2 bg-gray-400 rounded-full animate-pulse;
-    }
+    /* Ensure Leaflet container fills its parent */
+    #map .leaflet-container { width: 100%; height: 100%; }
   </style>
 </head>
-<body class="h-screen flex flex-col bg-gray-50">
+<body class="h-screen flex flex-col bg-gray-900 text-white">
 
-<header class="p-4 bg-gray-800 text-white">
-  <div class="flex justify-between items-center">
-    <h1 class="text-xl">🤖 AI Event Planning Assistant</h1>
-    <div class="flex items-center space-x-4">
-      <button id="clearBtn" class="text-sm underline text-white hover:text-gray-300">Clear Conversation</button>
-      <a class="underline text-white" href="/">Public Map</a>
-      <a class="underline text-white" href="/admin/">Admin</a>
+  <!-- Header (shared) -->
+  <header class="flex-shrink-0 px-4 py-3 bg-gray-800 border-b border-gray-700">
+    <div class="flex justify-between items-center">
+      <h1 id="pageTitle" class="text-xl font-light">
+        🤖 AI Event Planning Assistant
+      </h1>
+      <div class="flex items-center space-x-4">
+        <a
+          href="/"
+          class="text-sm underline hover:text-gray-300 focus:outline-none"
+          aria-label="Back to Home"
+        >
+          Back
+        </a>
+        <button
+          id="clearBtn"
+          class="text-sm underline hover:text-gray-300 focus:outline-none"
+          aria-label="Clear Conversation"
+        >
+          Clear Conversation
+        </button>
+      </div>
     </div>
-  </div>
-</header>
+  </header>
 
-<div class="flex-1 flex flex-col max-w-4xl mx-auto w-full">
-  <!-- Chat messages area -->
-  <div id="chatContainer" class="flex-1 overflow-y-auto p-4 space-y-4">
-    <div class="chat-bubble-ai">
-      <p class="font-medium text-sm text-gray-600 mb-1">AI Assistant</p>
-      <p>👋 Hello! I'm here to help you plan events in Timiș county. I can help you find:</p>
-      <ul class="mt-2 text-sm space-y-1">
-        <li>🏢 <strong>Venues & Spaces</strong> - halls, conference rooms, outdoor spaces</li>
-        <li>🤝 <strong>Volunteers</strong> - NGOs, volunteer organizations</li>
-        <li>🤝 <strong>Partners</strong> - companies, institutions for collaboration</li>
-        <li>📦 <strong>Logistics</strong> - catering, equipment, transportation</li>
-        <li>💰 <strong>Funding</strong> - grants and financial support</li>
-        <li>📅 <strong>Events</strong> - networking opportunities, existing events</li>
-      </ul>
-      <p class="mt-2 text-sm">Try asking something like: <em>"I need a venue for 80 people in Timișoara for a hackathon"</em></p>
+  <!-- Main Container: no height transition to keep chat fixed -->
+  <div id="mainContainer" class="relative flex flex-col flex-1">
+
+    <!-- Chat Panel (dark theme) -->
+    <div
+      id="chatPanel"
+      class="flex flex-col flex-1 bg-gray-900 text-white"
+    >
+      <!-- Chat Messages Area -->
+      <div id="chatContainer" class="flex-1 overflow-y-auto p-4 space-y-4">
+        <div class="bg-gray-700 text-white rounded-lg p-3 max-w-lg mr-auto">
+          <p class="font-medium text-sm text-gray-300 mb-1">AI Assistant</p>
+          <p>👋 Hello! I'm here to help you plan events in Timiș county. I can help you find:</p>
+          <ul class="mt-2 text-sm space-y-1">
+            <li>🏢 <strong>Spaces</strong> - venues, halls, cultural centers, libraries</li>
+            <li>🤝 <strong>Volunteers</strong> - NGOs, student organizations</li>
+            <li>💰 <strong>Grants</strong> - funding opportunities, financial support</li>
+            <li>📅 <strong>Events</strong> - festivals, conferences, networking opportunities</li>
+            <li>🏛️ <strong>Participatory Programs</strong> - community engagement, participatory budgets</li>
+            <li>🚧 <strong>Projects</strong> - infrastructure, community development</li>
+          </ul>
+          <p class="mt-2 text-sm text-gray-300">
+            Try asking something like: <em>"I need a venue for 80 people in Timișoara for a hackathon"</em> or <em>"What spaces are available?"</em>
+          </p>
+        </div>
+      </div>
+
+      <!-- Input Area (fixed to bottom of chatPanel, dark-themed) -->
+      <div class="border-t border-gray-700 bg-gray-800 p-4">
+        <form id="chatForm" class="flex space-x-3">
+          <input
+            id="messageInput"
+            type="text"
+            class="flex-1 bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
+            placeholder="Ask me about spaces, volunteers, grants, events, programs..."
+            maxlength="500"
+          />
+          <button
+            type="submit"
+            id="sendBtn"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors disabled:bg-gray-600"
+          >
+            Send
+          </button>
+        </form>
+        <p class="text-xs text-gray-400 mt-2">
+          💡 Be specific about your event type, location, and requirements for better results.
+        </p>
+      </div>
     </div>
+
+    <!-- Map Panel (hidden initially) -->
+    <div id="mapPanel" class="hidden flex-1">
+      <div id="map" class="flex-1"></div>
+    </div>
+
   </div>
 
-  <!-- Input area -->
-  <div class="border-t bg-white p-4">
-    <form id="chatForm" class="flex space-x-3">
-      <input
-        id="messageInput"
-        type="text"
-        class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        placeholder="Ask me about venues, volunteers, partners, logistics, funding..."
-        maxlength="500"
-      >
-      <button
-        type="submit"
-        id="sendBtn"
-        class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-colors disabled:bg-gray-400"
-      >
-        Send
-      </button>
-    </form>
-    <p class="text-xs text-gray-500 mt-2">
-      💡 Be specific about your event type, location, and requirements for better results.
-    </p>
-  </div>
-</div>
+  <!-- Floating Toggle Button (rounded and positioned 70px from edge) -->
+  <button
+    id="toggleBtn"
+    class="fixed right-[70px] top-1/2 transform -translate-y-1/2 bg-gray-800 text-white p-3 rounded-full shadow-lg hover:bg-gray-700 focus:outline-none transition-colors"
+    aria-label="Open Map"
+  >
+    Open Map
+  </button>
 
-<script>
-const chatContainer = document.getElementById('chatContainer');
-const chatForm = document.getElementById('chatForm');
-const messageInput = document.getElementById('messageInput');
-const sendBtn = document.getElementById('sendBtn');
-const clearBtn = document.getElementById('clearBtn');
+  <script>
+    // Initialize Leaflet map (but don't call invalidateSize until visible)
+    const map = L.map('map').setView([45.75, 21.23], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
 
-let isLoading = false;
-let conversationHistory = []; // Store conversation history
+    let allMarkers = [];
 
-chatForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
+    function clearMap() {
+      allMarkers.forEach(marker => map.removeLayer(marker));
+      allMarkers = [];
+    }
 
-  const message = messageInput.value.trim();
-  if (!message || isLoading) return;
+    function addResourceToMap(resource) {
+      if (!resource.lat || !resource.lon) return;
 
-  // Add user message to chat
-  addMessage(message, 'user');
+      const marker = L.marker([resource.lat, resource.lon]).addTo(map)
+        .bindPopup(`
+          <div class="text-sm">
+            <strong>${resource.name}</strong><br>
+            ${resource.type}<br>
+            Category: ${resource.category || 'N/A'}<br>
+            City: ${resource.city || 'N/A'}<br>
+            ${resource.url ? `<a href="${resource.url}" target="_blank" class="text-blue-300 underline">Website</a>` : ''}
+          </div>
+        `);
+      allMarkers.push(marker);
+      return marker;
+    }
 
-  // Add to conversation history
-  conversationHistory.push({
-    role: 'user',
-    content: message
-  });
+    function findRecommendedResources(aiResponse, allResources) {
+      if (!allResources || Object.keys(allResources).length === 0) return [];
 
-  messageInput.value = '';
+      const recommended = [];
+      const responseText = aiResponse.toLowerCase();
 
-  // Show typing indicator
-  const typingId = addTypingIndicator();
+      // Look for resources mentioned in the AI response
+      for (const [type, items] of Object.entries(allResources)) {
+        items.forEach(item => {
+          const itemName = item.name ? item.name.toLowerCase() : '';
 
-  // Disable input
-  isLoading = true;
-  sendBtn.disabled = true;
-  sendBtn.textContent = 'Thinking...';
+          // Check if this resource is specifically mentioned in the response
+          if (itemName && responseText.includes(itemName)) {
+            // Give higher priority to resources mentioned earlier in the response
+            const mentionIndex = responseText.indexOf(itemName);
+            recommended.push({ ...item, mentionIndex });
+          }
+        });
+      }
 
-  try {
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message,
-        history: conversationHistory
-      })
+      // Sort by mention order (earlier mentions are more important)
+      recommended.sort((a, b) => a.mentionIndex - b.mentionIndex);
+
+      // If no specific mentions found, take the first resource from the first category
+      if (recommended.length === 0) {
+        for (const [type, items] of Object.entries(allResources)) {
+          if (items.length > 0 && items[0].lat && items[0].lon) {
+            recommended.push(items[0]);
+            break; // Only take the first one
+          }
+        }
+      }
+
+      return recommended;
+    }
+
+    function zoomToResources(resources, aiResponse = '') {
+      if (!resources || Object.keys(resources).length === 0) return;
+
+      // Find the specifically recommended resources
+      const recommendedResources = findRecommendedResources(aiResponse, resources);
+
+      const markers = [];
+
+      // Add only the recommended resources to the map (max 3 to avoid clutter)
+      const resourcesToShow = recommendedResources.slice(0, 3);
+
+      resourcesToShow.forEach(item => {
+        if (item.lat && item.lon) {
+          const marker = addResourceToMap(item);
+          if (marker) markers.push(marker);
+        }
+      });
+
+    }
+
+    // Start with empty map - don't load all markers initially
+
+    // Chat functionality
+    const chatContainer = document.getElementById('chatContainer');
+    const chatForm = document.getElementById('chatForm');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    let isLoading = false;
+    let conversationHistory = [];
+
+    chatForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const message = messageInput.value.trim();
+      if (!message || isLoading) return;
+
+      addMessage(message, 'user');
+      conversationHistory.push({ role: 'user', content: message });
+      messageInput.value = '';
+
+      const typingId = addTypingIndicator();
+      isLoading = true;
+      sendBtn.disabled = true;
+      sendBtn.textContent = 'Thinking...';
+
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message, history: conversationHistory })
+        });
+        const data = await response.json();
+        removeTypingIndicator(typingId);
+
+        if (response.ok) {
+          addMessage(data.reply, 'ai', data.resources);
+          conversationHistory.push({ role: 'assistant', content: data.reply });
+
+          // Zoom to resources on map if any are provided
+          if (data.resources) {
+            zoomToResources(data.resources, data.reply);
+          }
+        } else {
+          addMessage(`Sorry, I encountered an error: ${data.error}`, 'ai');
+        }
+      } catch (error) {
+        removeTypingIndicator(typingId);
+        addMessage('Sorry, I could not process your request. Please try again.', 'ai');
+      }
+
+      isLoading = false;
+      sendBtn.disabled = false;
+      sendBtn.textContent = 'Send';
+      messageInput.focus();
     });
 
-    const data = await response.json();
+    function addMessage(content, sender, resources = null) {
+      const messageDiv = document.createElement('div');
+      if (sender === 'user') {
+        messageDiv.className = 'bg-blue-500 text-white rounded-lg p-3 max-w-sm ml-auto';
+      } else {
+        messageDiv.className = 'bg-gray-700 text-white rounded-lg p-3 max-w-lg mr-auto';
+      }
 
-    // Remove typing indicator
-    removeTypingIndicator(typingId);
+      const senderLabel = document.createElement('p');
+      senderLabel.className = 'font-medium text-sm mb-1';
+      senderLabel.style.color = sender === 'user' ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.6)';
+      senderLabel.textContent = sender === 'user' ? 'You' : 'AI Assistant';
 
-    if (response.ok) {
-      addMessage(data.reply, 'ai', data.resources);
+      const contentDiv = document.createElement('div');
+      contentDiv.innerHTML = formatMessage(content);
 
-      // Add AI response to conversation history
-      conversationHistory.push({
-        role: 'assistant',
-        content: data.reply
-      });
-    } else {
-      addMessage(`Sorry, I encountered an error: ${data.error}`, 'ai');
+      messageDiv.appendChild(senderLabel);
+      messageDiv.appendChild(contentDiv);
+
+      if (resources && Object.keys(resources).length > 0) {
+        const resourcesDiv = document.createElement('div');
+        resourcesDiv.className = 'mt-3 text-sm';
+        resourcesDiv.innerHTML = formatResources(resources);
+
+        // Add a button to view resources on map
+        const mapButton = document.createElement('button');
+        mapButton.className = 'mt-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs transition-colors';
+        mapButton.textContent = '📍 View on Map';
+        mapButton.onclick = () => {
+          // Open map if not already open
+          if (!isSplit) {
+            toggleBtn.click();
+          }
+          // Clear existing markers and add only these resources
+          clearMap();
+          zoomToResources(resources, content);
+        };
+
+        resourcesDiv.appendChild(mapButton);
+        messageDiv.appendChild(resourcesDiv);
+      }
+
+      chatContainer.appendChild(messageDiv);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
     }
-  } catch (error) {
-    removeTypingIndicator(typingId);
-    addMessage('Sorry, I could not process your request. Please try again.', 'ai');
-  }
 
-  // Re-enable input
-  isLoading = false;
-  sendBtn.disabled = false;
-  sendBtn.textContent = 'Send';
-  messageInput.focus();
-});
-
-function addMessage(content, sender, resources = null) {
-  const messageDiv = document.createElement('div');
-  messageDiv.className = `chat-bubble-${sender}`;
-
-  const senderLabel = document.createElement('p');
-  senderLabel.className = 'font-medium text-sm mb-1';
-  senderLabel.style.color = sender === 'user' ? 'rgba(255,255,255,0.8)' : '#6b7280';
-  senderLabel.textContent = sender === 'user' ? 'You' : 'AI Assistant';
-
-  const contentDiv = document.createElement('div');
-  contentDiv.innerHTML = formatMessage(content);
-
-  messageDiv.appendChild(senderLabel);
-  messageDiv.appendChild(contentDiv);
-
-  // Add resource breakdown if available
-  if (resources && Object.keys(resources).length > 0) {
-    const resourcesDiv = document.createElement('div');
-    resourcesDiv.className = 'mt-3 text-sm';
-    resourcesDiv.innerHTML = formatResources(resources);
-    messageDiv.appendChild(resourcesDiv);
-  }
-
-  chatContainer.appendChild(messageDiv);
-  chatContainer.scrollTop = chatContainer.scrollHeight;
-}
-
-function addTypingIndicator() {
-  const typingDiv = document.createElement('div');
-  typingDiv.className = 'chat-bubble-ai typing-indicator';
-  typingDiv.id = 'typing-' + Date.now();
-
-  typingDiv.innerHTML = `
-    <p class="font-medium text-sm text-gray-600 mb-1 w-full">AI Assistant</p>
-    <div class="flex space-x-1">
-      <div class="typing-dot" style="animation-delay: 0ms"></div>
-      <div class="typing-dot" style="animation-delay: 150ms"></div>
-      <div class="typing-dot" style="animation-delay: 300ms"></div>
-    </div>
-  `;
-
-  chatContainer.appendChild(typingDiv);
-  chatContainer.scrollTop = chatContainer.scrollHeight;
-
-  return typingDiv.id;
-}
-
-function removeTypingIndicator(typingId) {
-  const typingDiv = document.getElementById(typingId);
-  if (typingDiv) {
-    typingDiv.remove();
-  }
-}
-
-function formatMessage(content) {
-  // Simple formatting for better readability
-  return content
-    .replace(/\n/g, '<br>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>');
-}
-
-function formatResources(resources) {
-  let html = '<details class="mt-2"><summary class="cursor-pointer text-blue-600 text-sm">📊 View detailed resource breakdown</summary><div class="mt-2 space-y-2">';
-
-  for (const [type, items] of Object.entries(resources)) {
-    if (items.length > 0) {
-      html += `<div class="border-l-2 border-blue-200 pl-3">`;
-      html += `<h4 class="font-medium text-gray-700">${type} (${items.length})</h4>`;
-      html += `<ul class="text-xs space-y-1 mt-1">`;
-      items.forEach(item => {
-        html += `<li>• <strong>${item.name}</strong>`;
-        if (item.city) html += ` - ${item.city}`;
-        if (item.capacity) html += ` (capacity: ${item.capacity})`;
-        if (item.contact) html += ` - ${item.contact}`;
-        html += `</li>`;
-      });
-      html += `</ul></div>`;
+    function addTypingIndicator() {
+      const typingDiv = document.createElement('div');
+      typingDiv.className = 'bg-gray-700 text-white rounded-lg p-3 max-w-lg mr-auto typing-indicator';
+      typingDiv.id = 'typing-' + Date.now();
+      typingDiv.innerHTML = `
+        <p class="font-medium text-sm text-gray-300 mb-1">AI Assistant</p>
+        <div class="flex space-x-1">
+          <div class="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style="animation-delay: 0ms"></div>
+          <div class="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style="animation-delay: 150ms"></div>
+          <div class="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style="animation-delay: 300ms"></div>
+        </div>
+      `;
+      chatContainer.appendChild(typingDiv);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+      return typingDiv.id;
     }
-  }
 
-  html += '</div></details>';
-  return html;
-}
+    function removeTypingIndicator(typingId) {
+      const el = document.getElementById(typingId);
+      if (el) el.remove();
+    }
 
-// Clear conversation functionality
-clearBtn.addEventListener('click', () => {
-  if (confirm('Clear the entire conversation? This cannot be undone.')) {
-    conversationHistory = [];
-    chatContainer.innerHTML = `
-      <div class="chat-bubble-ai">
-        <p class="font-medium text-sm text-gray-600 mb-1">AI Assistant</p>
-        <p>👋 Hello! I'm here to help you plan events in Timiș county. I can help you find:</p>
-        <ul class="mt-2 text-sm space-y-1">
-          <li>🏢 <strong>Venues & Spaces</strong> - halls, conference rooms, outdoor spaces</li>
-          <li>🤝 <strong>Volunteers</strong> - NGOs, volunteer organizations</li>
-          <li>🤝 <strong>Partners</strong> - companies, institutions for collaboration</li>
-          <li>📦 <strong>Logistics</strong> - catering, equipment, transportation</li>
-          <li>💰 <strong>Funding</strong> - grants and financial support</li>
-          <li>📅 <strong>Events</strong> - networking opportunities, existing events</li>
-        </ul>
-        <p class="mt-2 text-sm">Try asking something like: <em>"I need a venue for 80 people in Timișoara for a hackathon"</em></p>
-      </div>
-    `;
-  }
-});
+    function formatMessage(content) {
+      return content
+        .replace(/\n/g, '<br>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>');
+    }
 
-// Focus input on load
-messageInput.focus();
-</script>
+    function formatResources(resources) {
+      let html = '<details class="mt-2"><summary class="cursor-pointer text-blue-400 text-sm">📊 View detailed resource breakdown</summary><div class="mt-2 space-y-2">';
+      for (const [type, items] of Object.entries(resources)) {
+        if (items.length > 0) {
+          html += `<div class="border-l-2 border-blue-400 pl-3">`;
+          html += `<h4 class="font-medium text-white">${type} (${items.length})</h4>`;
+          html += `<ul class="text-xs space-y-1 mt-1 text-gray-200">`;
+          items.forEach(item => {
+            html += `<li>• <strong>${item.name}</strong>`;
+            if (item.city) html += ` - ${item.city}`;
+            if (item.capacity) html += ` (capacity: ${item.capacity})`;
+            if (item.contact) html += ` - ${item.contact}`;
+            html += `</li>`;
+          });
+          html += `</ul></div>`;
+        }
+      }
+      html += '</div></details>';
+      return html;
+    }
 
+    // Clear conversation
+    clearBtn.addEventListener('click', () => {
+      if (confirm('Clear the entire conversation? This cannot be undone.')) {
+        conversationHistory = [];
+        // Clear map markers when clearing conversation
+        clearMap();
+        chatContainer.innerHTML = `
+          <div class="bg-gray-700 text-white rounded-lg p-3 max-w-lg mr-auto">
+            <p class="font-medium text-sm text-gray-300 mb-1">AI Assistant</p>
+            <p>👋 Hello! I'm here to help you plan events in Timiș county. I can help you find:</p>
+            <ul class="mt-2 text-sm space-y-1 text-white">
+              <li>🏢 <strong>Venues & Spaces</strong> - halls, conference rooms, outdoor spaces</li>
+              <li>🤝 <strong>Volunteers</strong> - NGOs, volunteer organizations</li>
+              <li>🤝 <strong>Partners</strong> - companies, institutions for collaboration</li>
+              <li>📦 <strong>Logistics</strong> - catering, equipment, transportation</li>
+              <li>💰 <strong>Funding</strong> - grants and financial support</li>
+              <li>📅 <strong>Events</strong> - networking opportunities, existing events</li>
+            </ul>
+            <p class="mt-2 text-sm text-gray-300">
+              Try asking something like: <em>"I need a venue for 80 people in Timișoara for a hackathon"</em>
+            </p>
+          </div>
+        `;
+      }
+    });
+
+    messageInput.focus();
+
+    // Toggle between full-chat and split view with floating button
+    const toggleBtn = document.getElementById('toggleBtn');
+    const mainContainer = document.getElementById('mainContainer');
+    const chatPanel = document.getElementById('chatPanel');
+    const mapPanel = document.getElementById('mapPanel');
+    const pageTitle = document.getElementById('pageTitle');
+
+    let isSplit = false;
+    toggleBtn.addEventListener('click', () => {
+      if (!isSplit) {
+        // Switch to split: chat left, map right
+        mainContainer.classList.remove('flex-col');
+        mainContainer.classList.add('flex-row');
+
+        chatPanel.classList.remove('flex-1');
+        chatPanel.classList.add('w-1/2');
+
+        mapPanel.classList.remove('hidden');
+        mapPanel.classList.add('w-1/2', 'flex');
+
+        pageTitle.textContent = 'Chat & Map';
+        toggleBtn.innerText = 'Close Map';
+        toggleBtn.setAttribute('aria-label', 'Close Map');
+
+        // Move button 90px left of center
+        toggleBtn.style.right = 'unset';
+        toggleBtn.style.left = 'calc(50% - 90px)';
+        toggleBtn.style.transform = 'translate(-50%, -50%)';
+
+        // Resize map properly once visible
+        setTimeout(() => { map.invalidateSize(); }, 300);
+      } else {
+        // Switch back to full chat
+        mainContainer.classList.remove('flex-row');
+        mainContainer.classList.add('flex-col');
+
+        chatPanel.classList.remove('w-1/2');
+        chatPanel.classList.add('flex-1');
+
+        mapPanel.classList.remove('w-1/2', 'flex');
+        mapPanel.classList.add('hidden');
+
+        pageTitle.textContent = '🤖 AI Event Planning Assistant';
+        toggleBtn.innerText = 'Open Map';
+        toggleBtn.setAttribute('aria-label', 'Open Map');
+
+        // Position button at right edge: 70px from edge
+        toggleBtn.style.left = 'unset';
+        toggleBtn.style.right = '70px';
+        toggleBtn.style.transform = 'translateY(-50%)';
+      }
+      isSplit = !isSplit;
+    });
+  </script>
 </body>
 </html>

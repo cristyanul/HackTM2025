@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
     .addTo(map);
 
   const markers = new Map();   // id → Leaflet marker
-  let currentCategory = '';   // current filter
+  let currentType = '';   // current filter
 
   // ── Modal elements ───────────────────────────────────────
   const modal       = document.getElementById("placeModal");
@@ -23,26 +23,26 @@ document.addEventListener("DOMContentLoaded", () => {
   const urlField    = document.getElementById("url");
   const deleteBtn   = document.getElementById("deleteBtn");
   const cancelBtn   = document.getElementById("cancelBtn");
-  const categoryFilter = document.getElementById("categoryFilter");
+  const typeFilter = document.getElementById("typeFilter");
 
   let currentLat, currentLon;
 
   // ── Helpers ──────────────────────────────────────────────
-  function loadCategories() {
-    fetch("/api/categories")
+  function loadTypes() {
+    fetch("/api/resource-types")
       .then(r => r.json())
-      .then(categories => {
-        categories.forEach(cat => {
+      .then(types => {
+        types.forEach(type => {
           const option = document.createElement('option');
-          option.value = cat;
-          option.textContent = cat;
-          categoryFilter.appendChild(option);
+          option.value = type;
+          option.textContent = type;
+          typeFilter.appendChild(option);
         });
       });
   }
 
   function loadMarkers() {
-    const url = currentCategory ? `/admin/api/resources?category=${encodeURIComponent(currentCategory)}` : "/admin/api/resources";
+    const url = currentType ? `/admin/api/resources?type=${encodeURIComponent(currentType)}` : "/admin/api/resources";
     fetch(url)
       .then(r => r.json())
       .then(data => {
@@ -134,13 +134,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   cancelBtn.addEventListener("click", () => modal.close());
 
-  // ── Category filter ──────────────────────────────────────
-  categoryFilter.addEventListener("change", (e) => {
-    currentCategory = e.target.value;
+  // ── Type filter ──────────────────────────────────────
+  typeFilter.addEventListener("change", (e) => {
+    currentType = e.target.value;
     loadMarkers();
   });
 
   // initial load
-  loadCategories();
+  loadTypes();
   loadMarkers();
 });
