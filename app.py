@@ -43,7 +43,7 @@ login_manager.login_view = "login"
 # Initialize local LLM client
 if HAS_OPENAI:
     client = OpenAI(
-        base_url="http://192.168.1.146:1234/v1",
+        base_url="http://172.20.10.6:1234/v1",
         api_key="not-needed"  # Local LLM doesn't require API key
     )
 else:
